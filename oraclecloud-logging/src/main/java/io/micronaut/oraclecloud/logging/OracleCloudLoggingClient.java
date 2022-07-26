@@ -19,7 +19,10 @@ import com.oracle.bmc.loggingingestion.Logging;
 import com.oracle.bmc.loggingingestion.requests.PutLogsRequest;
 import com.oracle.bmc.loggingingestion.responses.PutLogsResponse;
 import io.micronaut.context.annotation.Context;
-import io.micronaut.runtime.server.EmbeddedServer;
+import io.micronaut.context.event.ApplicationEventListener;
+import io.micronaut.core.annotation.Internal;
+import io.micronaut.discovery.event.ServiceReadyEvent;
+import io.micronaut.runtime.ApplicationConfiguration;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Singleton;
 
@@ -30,37 +33,42 @@ import jakarta.inject.Singleton;
  * @author Nemanja Mikic
  * @since 1.0.0
  */
-@Singleton
 @Context
-public final class OracleCloudLoggingClient {
+@Internal
+@Singleton
+final class OracleCloudLoggingClient implements ApplicationEventListener<ServiceReadyEvent> {
 
     private static Logging logging;
     private static String host;
     private static String appName;
 
-    public OracleCloudLoggingClient(Logging logging, EmbeddedServer embeddedServer) {
-        setLogging(logging, embeddedServer.getHost(), embeddedServer.getApplicationConfiguration().getName().orElse(""));
+    private final Logging internalLogging;
+    private final String  internalAppName;
+
+    public OracleCloudLoggingClient(Logging logging, ApplicationConfiguration applicationConfiguration) {
+        this.internalLogging = logging;
+        this.internalAppName = applicationConfiguration.getName().orElse("");
     }
 
-    protected static synchronized Logging getLogging() {
+    static synchronized Logging getLogging() {
         return logging;
     }
 
-    protected static synchronized String getHost() {
+    static synchronized String getHost() {
         return host;
     }
 
-    protected static synchronized String getAppName() {
+    static synchronized String getAppName() {
         return appName;
     }
 
-    protected static synchronized void setLogging(Logging logging, String host, String appName) {
+    private static synchronized void setLogging(Logging logging, String host, String appName) {
         OracleCloudLoggingClient.logging = logging;
         OracleCloudLoggingClient.host = host;
         OracleCloudLoggingClient.appName = appName;
     }
 
-    protected static synchronized void destroy() throws Exception {
+    static synchronized void destroy() throws Exception {
         OracleCloudLoggingClient.logging.close();
         OracleCloudLoggingClient.logging = null;
     }
@@ -70,11 +78,16 @@ public final class OracleCloudLoggingClient {
         OracleCloudLoggingClient.destroy();
     }
 
-    protected static synchronized boolean putLogs(PutLogsRequest putLogsRequest) {
+    static synchronized boolean putLogs(PutLogsRequest putLogsRequest) {
         if (logging != null) {
             PutLogsResponse putLogsResponse = logging.putLogs(putLogsRequest);
             return putLogsResponse.getOpcRequestId() != null;
         }
         return false;
+    }
+
+    @Override
+    public void onApplicationEvent(ServiceReadyEvent event) {
+        setLogging(internalLogging, event.getSource().getHost(), internalAppName);
     }
 }

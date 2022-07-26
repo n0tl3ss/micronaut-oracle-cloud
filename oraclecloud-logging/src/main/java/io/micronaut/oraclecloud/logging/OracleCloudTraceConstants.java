@@ -22,7 +22,7 @@ package io.micronaut.oraclecloud.logging;
  * @author Nemanja Mikic
  * @since 1.0.0
  */
-public interface StackdriverTraceConstants {
+public interface OracleCloudTraceConstants {
 
     /**
      * The JSON field name for the log level (severity).

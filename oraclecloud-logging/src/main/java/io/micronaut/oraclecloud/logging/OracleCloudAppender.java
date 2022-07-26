@@ -24,10 +24,13 @@ import com.oracle.bmc.loggingingestion.model.LogEntry;
 import com.oracle.bmc.loggingingestion.model.LogEntryBatch;
 import com.oracle.bmc.loggingingestion.model.PutLogsDetails;
 import com.oracle.bmc.loggingingestion.requests.PutLogsRequest;
+import io.micronaut.core.annotation.Internal;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.Future;
@@ -40,6 +43,7 @@ import java.util.concurrent.TimeUnit;
  * @author Nemanja Mikic
  * @since 1.0.0
  */
+@Internal
 public final class OracleCloudAppender extends AppenderBase<ILoggingEvent> {
 
     private static final int DEFAULT_QUEUE_SIZE = 128;
@@ -54,6 +58,11 @@ public final class OracleCloudAppender extends AppenderBase<ILoggingEvent> {
     private String logId;
     private String host;
     private String appName;
+    private List<String> blackListLoggerName = new ArrayList<>();
+
+    public void addBlackListLoggerName(String test) {
+        this.blackListLoggerName.add(test);
+    }
 
     public String getLogId() {
         return logId;
@@ -94,13 +103,14 @@ public final class OracleCloudAppender extends AppenderBase<ILoggingEvent> {
 
         if (errorCount == 0) {
             deque = queueFactory.newLinkedBlockingDeque(queueSize);
-            task = getContext().getScheduledExecutorService().submit(() -> {
+
+            task = getContext().getScheduledExecutorService().scheduleAtFixedRate(() -> {
                 try {
                     dispatchEvents();
                 } catch (InterruptedException e) {
                 }
                 addInfo("shutting down");
-            });
+            } ,0, 100, TimeUnit.MILLISECONDS);
             super.start();
         }
     }
@@ -116,11 +126,9 @@ public final class OracleCloudAppender extends AppenderBase<ILoggingEvent> {
 
     @Override
     protected void append(ILoggingEvent eventObject) {
-        if (eventObject == null || !isStarted()) {
+        if (eventObject == null || !isStarted() || blackListLoggerName.contains(eventObject.getLoggerName())) {
             return;
         }
-
-        System.out.println(eventObject.getFormattedMessage());
 
         try {
             final boolean inserted = deque.offer(eventObject, eventDelayLimit.getMilliseconds(), TimeUnit.MILLISECONDS);
@@ -158,12 +166,10 @@ public final class OracleCloudAppender extends AppenderBase<ILoggingEvent> {
     }
 
     private void dispatchEvents() throws InterruptedException {
-        while (true) {
-
-            if (!tryToConfigure()) {
-                Thread.sleep(100);
-                continue;
-            }
+        if (!tryToConfigure()) {
+            return;
+        }
+        while (!deque.isEmpty()) {
             ILoggingEvent event = deque.takeFirst();
             PutLogsDetails putLogsDetails = PutLogsDetails.builder()
                     .logEntryBatches(Collections.singletonList(LogEntryBatch.builder()

@@ -19,13 +19,14 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.contrib.json.classic.JsonLayout;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micronaut.core.annotation.Internal;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static io.micronaut.oraclecloud.logging.StackdriverTraceConstants.MDC_FIELD_SPAN_ID;
-import static io.micronaut.oraclecloud.logging.StackdriverTraceConstants.MDC_FIELD_TRACE_ID;
+import static io.micronaut.oraclecloud.logging.OracleCloudTraceConstants.MDC_FIELD_SPAN_ID;
+import static io.micronaut.oraclecloud.logging.OracleCloudTraceConstants.MDC_FIELD_TRACE_ID;
 
 /**
  * StackdriverJsonLayout.
@@ -34,7 +35,8 @@ import static io.micronaut.oraclecloud.logging.StackdriverTraceConstants.MDC_FIE
  * @author Nemanja Mikic
  * @since 1.0.0
  */
-public class StackdriverJsonLayout extends JsonLayout {
+@Internal
+public class OracleCloudJsonLayout extends JsonLayout {
 
     private boolean includeTraceId;
 
@@ -44,7 +46,7 @@ public class StackdriverJsonLayout extends JsonLayout {
 
     private Map<String, Object> customJson;
 
-    public StackdriverJsonLayout() {
+    public OracleCloudJsonLayout() {
         this.appendLineSeparator = true;
         this.includeExceptionInMessage = true;
         this.includeException = false;
@@ -71,13 +73,13 @@ public class StackdriverJsonLayout extends JsonLayout {
         Map<String, Object> map = new LinkedHashMap<>();
 
         if (this.includeTimestamp) {
-            map.put(StackdriverTraceConstants.TIMESTAMP_SECONDS_ATTRIBUTE,
+            map.put(OracleCloudTraceConstants.TIMESTAMP_SECONDS_ATTRIBUTE,
                     TimeUnit.MILLISECONDS.toSeconds(event.getTimeStamp()));
-            map.put(StackdriverTraceConstants.TIMESTAMP_NANOS_ATTRIBUTE,
+            map.put(OracleCloudTraceConstants.TIMESTAMP_NANOS_ATTRIBUTE,
                     TimeUnit.MILLISECONDS.toNanos(event.getTimeStamp()));
         }
 
-        add(StackdriverTraceConstants.SEVERITY_ATTRIBUTE, this.includeLevel,
+        add(OracleCloudTraceConstants.SEVERITY_ATTRIBUTE, this.includeLevel,
                 String.valueOf(event.getLevel()), map);
         add(JsonLayout.THREAD_ATTR_NAME, this.includeThreadName, event.getThreadName(), map);
         add(JsonLayout.LOGGER_ATTR_NAME, this.includeLoggerName, event.getLoggerName(), map);
@@ -98,9 +100,9 @@ public class StackdriverJsonLayout extends JsonLayout {
         add(JsonLayout.MESSAGE_ATTR_NAME, this.includeMessage, event.getMessage(), map);
         add(JsonLayout.CONTEXT_ATTR_NAME, this.includeContextName, event.getLoggerContextVO().getName(), map);
         addThrowableInfo(JsonLayout.EXCEPTION_ATTR_NAME, this.includeException, event, map);
-        add(StackdriverTraceConstants.TRACE_ID_ATTRIBUTE, this.includeTraceId,
+        add(OracleCloudTraceConstants.TRACE_ID_ATTRIBUTE, this.includeTraceId,
                 event.getLoggerContextVO().getPropertyMap().get(MDC_FIELD_TRACE_ID), map);
-        add(StackdriverTraceConstants.SPAN_ID_ATTRIBUTE, this.includeSpanId,
+        add(OracleCloudTraceConstants.SPAN_ID_ATTRIBUTE, this.includeSpanId,
                 event.getLoggerContextVO().getPropertyMap().get(MDC_FIELD_SPAN_ID), map);
         if (this.customJson != null && !this.customJson.isEmpty()) {
             for (Map.Entry<String, Object> entry : this.customJson.entrySet()) {
