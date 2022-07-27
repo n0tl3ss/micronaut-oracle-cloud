@@ -12,10 +12,17 @@ dependencies {
     api mn.micronaut.inject
     implementation mn.reactor
     implementation projects.oraclecloudSdk
-    implementation ("ch.qos.logback.contrib:logback-json-classic:0.1.5")
-    implementation ("com.fasterxml.jackson.core:jackson-databind")
+    implementation("ch.qos.logback.contrib:logback-json-classic:0.1.5")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
     testImplementation "io.micronaut:micronaut-inject-java"
     testImplementation "io.micronaut.test:micronaut-test-spock:$micronautTestVersion"
     testImplementation "io.micronaut:micronaut-inject-groovy"
     testImplementation "org.testcontainers:spock"
+}
+
+// TODO temporarily disable binary compatibility checks
+micronautBuild {
+    binaryCompatibility {
+        enabled = false
+    }
 }
